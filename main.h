@@ -9,6 +9,7 @@
 #ifndef MAIN_H_
 #define MAIN_H_
 
+#include <avr/io.h>
 #include "device.h"
 
 /*************PERIFERIE*******************************/
@@ -31,8 +32,8 @@
 /*************MAKRA***********************************/
 #define sbi(var, mask)  ((var) |= (uint8_t)(1 << mask))
 #define cbi(var, mask)  ((var) &= (uint8_t)~(1 << mask))
-#define tbi(var, mask)	(var & (1 << mask) )
-#define xbi(var, mask)	((var)^=(uint8_t)(1 << mask))
+#define tbi(var,mask)	(var & (1 << mask) )
+#define xbi(var,mask)	((var)^=(uint8_t)(1 << mask))
 /*****************************************************/
 #ifdef HAL_ATMEGA128RFA1
 	#define LED0ON (sbi(PORTG,LED0))
@@ -64,6 +65,5 @@
 uint8_t connected_devices = 0;
 Device devices[DEVICE_LIMIT];
 
-void APP_WriteString(char *string);
 
 #endif /* MAIN_H_ */

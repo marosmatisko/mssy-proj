@@ -9,7 +9,7 @@ enum DeviceState {
 };
 
 typedef struct Device {
-	uint16_t id;
+	uint16_t address;
 	enum DeviceState state;
 	enum PacketType last_packet;
 } Device;

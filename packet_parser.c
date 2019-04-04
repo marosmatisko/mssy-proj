@@ -411,14 +411,12 @@ void detect_data_packet_arrays_size(uint16_t data, uint8_t *item_count) {
 
 void send_packet(uint8_t *packet, uint8_t packet_length) {
 	for (uint8_t i = 0; i < packet_length; ++i) {
-//#ifdef DEBUGGING
-		//HAL_UartWriteByte(packet[i] + 50);
+
 		HAL_UartWriteByte(packet[i] + 50);
 		HAL_UartWriteByte(',');
 		HAL_UartWriteByte(' ');
-		//APP_WriteString(", ");
-//#endif
-		
+
+			
 	}
 }
 
