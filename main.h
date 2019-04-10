@@ -64,6 +64,7 @@
 #define DEVICE_LIMIT 4
 uint8_t connected_devices = 0;
 Device devices[DEVICE_LIMIT];
-
+void *packet_buffer;
+PacketType last_packet_type;
 
 #endif /* MAIN_H_ */

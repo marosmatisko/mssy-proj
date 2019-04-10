@@ -16,12 +16,12 @@
 extern void APP_WriteString(char *string);
 
 //incoming
-enum PacketType get_packet_type(Device device, uint8_t endpoint, uint8_t *frame, uint8_t packet_length);
-void process_packet(Device device, uint8_t endpoint, uint8_t *frame, uint8_t packet_length);
+PacketType get_packet_type(Device device, uint8_t endpoint, uint8_t *frame, uint8_t packet_length);
+PacketType process_packet(Device device, uint8_t endpoint, uint8_t *frame, uint8_t packet_length, void *packet_struct);
 void detect_data_packet_arrays_size(uint16_t data, uint8_t *item_count);
 
 //outgoing
-void send_packet(uint8_t *packet, uint8_t packet_length);
+void debug_packet(uint8_t *packet, uint8_t packet_length);
 void serialize_fixed_size_packet(void* packet, uint8_t packet_length);
 void serialize_hello_packet(HelloPacket_t *hello_packet, uint8_t packet_length);
 void serialize_hello_ack_packet(HelloAckPacket_t *hello_ack_packet);

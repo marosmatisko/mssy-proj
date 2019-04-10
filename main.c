@@ -122,10 +122,10 @@ void HAL_UartBytesReceived(uint16_t bytes) { //citanie konzoly z klavesnice
 
 		if (byte == '\r') {
 			appUartBuffer[appUartTempbufferPtr++] = '\0';
-			if (strcmp("devices", appUartBuffer) == 0) {
+			if (strcmp("devices", (const char *)appUartBuffer) == 0) {
 				printDevices(); // TODO 
 			} else {
-				if (strcmp("hello", appUartBuffer) == 0) {
+				if (strcmp("hello", (const char *)appUartBuffer) == 0) {
 					Device new_device;
 					new_device.address = 0;
 					new_device.state = Disconnected;
@@ -199,7 +199,8 @@ static bool appDataInd(NWK_DataInd_t *ind) { //prijem
 	
 	for (int i = 0; i < DEVICE_LIMIT; ++i) {
 		if (devices->address == ind->srcAddr) {
-			process_packet(devices[i], ind->dstEndpoint ,ind->data, ind->size);
+			free(packet_buffer);
+			last_packet_type = process_packet(devices[i], ind->dstEndpoint ,ind->data, ind->size, packet_buffer);
 		}
 	}
 	
