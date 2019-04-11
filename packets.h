@@ -12,7 +12,7 @@
 #include <stdint.h>
 
 typedef enum PacketType {
-	HelloPacket, HelloAckPacket, AckPacket, SleepPacket,
+	HelloPacket = 1, HelloAckPacket, AckPacket, SleepPacket,
 	ReconnectPacket, DataPacket, SetValuePacket, GetValuePacket, UnknownPacket
 } PacketType;
 

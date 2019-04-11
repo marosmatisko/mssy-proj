@@ -4,7 +4,7 @@
  * Created: 22. 3. 2019 21:38:04
  *  Author: Maros
  */ 
-//#define F_CPU 16000000L
+
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -16,7 +16,6 @@
 #include "packet_parser.h"
 #include "packets.h"
 #include "halUart.h"
-//#include "main.h"
 
 #define DEBUGGING
 
@@ -97,8 +96,6 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 			APP_WriteString(", READ/WRITE: ");
 			HAL_UartWriteByte(packet->read_write + '0');
 			APP_WriteString("\r\n");
-			
-			serialize_hello_packet(packet, packet_length);
 #endif // DEBUGGING
 			break;
 		}
@@ -123,8 +120,6 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 			HAL_UartWriteByte(',');
 			HAL_UartWriteByte((packet->reserved>>8) + '0');
 			APP_WriteString("\r\n");
-			
-			serialize_hello_ack_packet(packet);
 #endif // DEBUGGING
 			//process hello-ACK packet
 			break;
@@ -156,8 +151,6 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 					HAL_UartWriteByte(',');
 					HAL_UartWriteByte((packet->reserved>>8) + '0');
 					APP_WriteString("\r\n");
-								
-					serialize_hello_ack_packet(packet);
 #endif // DEBUGGING
 					//process ACK-to-hello-ACK packet
 					break;
@@ -196,8 +189,6 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 					HAL_UartWriteByte(',');
 					HAL_UartWriteByte(packet->reserved>>8);
 					APP_WriteString("\r\n");
-
-					serialize_reconnect_packet(packet);
 #endif // DEBUGGING
 					// process reconnect-ACK or data-ACK packet
 					break;
@@ -241,8 +232,6 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 			HAL_UartWriteByte(',');
 			HAL_UartWriteByte(packet->reserved>>8);
 			APP_WriteString("\r\n");
-
-			serialize_reconnect_packet(packet);
 #endif // DEBUGGING
 			// process reconnect packet
 			break;
@@ -298,8 +287,7 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 			APP_WriteString(", ");
 			HAL_UartWriteByte(packet->values[9]);
 			APP_WriteString("\r\n");
-			
-			serialize_data_packet(packet, packet_length, item_count);
+
 #endif // DEBUGGING
 			// process data packet
 			break;
@@ -330,8 +318,6 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 			APP_WriteString(", ");
 			HAL_UartWriteByte(packet->items[3]+'3');
 			APP_WriteString("\r\n");
-			
-			serialize_get_value_packet(packet, packet_length);
 #endif // DEBUGGING
 			// process get value packet
 			break;
@@ -386,8 +372,6 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 			APP_WriteString(", ");
 			HAL_UartWriteByte(packet->data_part.values[7]);
 			APP_WriteString("\r\n");
-			
-			serialize_set_value_packet(packet, packet_length, item_count);
 #endif // DEBUGGING
 			//process set value packet
 			break;
@@ -395,7 +379,7 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 		
 		case UnknownPacket: {
 #ifdef DEBUGGING
-			APP_WriteString("Unknown packet received!\r\n");
+			APP_WriteString("Unknown packet received! \r\n");
 #endif // DEBUGGING
 			break;	
 		}
@@ -422,16 +406,14 @@ void debug_packet(uint8_t *packet, uint8_t packet_length) {
 	}
 }
 
-void serialize_fixed_size_packet(void* packet, uint8_t packet_length) {
-	uint8_t *frame_payload = (uint8_t *) malloc(packet_length);
+void serialize_fixed_size_packet(void* packet, uint8_t *frame_payload, uint8_t packet_length) {
 	memcpy(frame_payload, packet, packet_length);
 #ifdef DEBUGGING
 	debug_packet(frame_payload, packet_length);
 #endif // DEBUGGING
 }
 
-void serialize_hello_packet(HelloPacket_t *hello_packet, uint8_t packet_length) {
-	uint8_t *frame_payload = (uint8_t *)malloc(packet_length);
+void serialize_hello_packet(HelloPacket_t *hello_packet, uint8_t *frame_payload, uint8_t packet_length) {
 	memcpy(frame_payload, hello_packet, 4);
 	memcpy(&frame_payload[packet_length - 4], hello_packet->data_part.items, packet_length - 7);
 	memcpy(&frame_payload[packet_length - 3], &hello_packet->sleep, 3);
@@ -440,20 +422,19 @@ void serialize_hello_packet(HelloPacket_t *hello_packet, uint8_t packet_length) 
 #endif // DEBUGGING
 }
 
-void serialize_hello_ack_packet(HelloAckPacket_t *hello_ack_packet) {
-	serialize_fixed_size_packet(hello_ack_packet, 7);
+void serialize_hello_ack_packet(HelloAckPacket_t *hello_ack_packet, uint8_t *frame_payload) {
+	serialize_fixed_size_packet(hello_ack_packet, frame_payload, 7);
 }
 
-void serialize_sleep_packet(SleepPacket_t * sleep_packet) {
-	serialize_fixed_size_packet(sleep_packet, 5);
+void serialize_sleep_packet(SleepPacket_t * sleep_packet, uint8_t *frame_payload) {
+	serialize_fixed_size_packet(sleep_packet, frame_payload, 5);
 }
 
-void serialize_reconnect_packet(ReconnectAckPacket_t *reconnect_packet) {
-	serialize_fixed_size_packet(reconnect_packet, 4);
+void serialize_reconnect_packet(ReconnectAckPacket_t *reconnect_packet, uint8_t *frame_payload) {
+	serialize_fixed_size_packet(reconnect_packet, frame_payload, 4);
 }
 
-void serialize_get_value_packet(GetValuePacket_t *get_value_packet, uint8_t packet_length) {
-	uint8_t *frame_payload = (uint8_t *) malloc(packet_length);
+void serialize_get_value_packet(GetValuePacket_t *get_value_packet, uint8_t *frame_payload, uint8_t packet_length) {
 	memcpy(frame_payload, get_value_packet, 4);
 	memcpy(&frame_payload[4], get_value_packet->items, packet_length - 4);
 #ifdef DEBUGGING
@@ -461,8 +442,7 @@ void serialize_get_value_packet(GetValuePacket_t *get_value_packet, uint8_t pack
 #endif // DEBUGGING
 }
 
-void serialize_set_value_packet(SetValuePacket_t *set_value_packet, uint8_t packet_length, uint8_t item_count) {
-	uint8_t *frame_payload = (uint8_t *) malloc(packet_length);
+void serialize_set_value_packet(SetValuePacket_t *set_value_packet, uint8_t *frame_payload, uint8_t packet_length, uint8_t item_count) {
 	memcpy(frame_payload, set_value_packet, 4);
 	memcpy(&frame_payload[4], set_value_packet->data_part.items, item_count);
 	memcpy(&frame_payload[4 + item_count], set_value_packet->data_part.values, packet_length - item_count - 4);
@@ -471,8 +451,7 @@ void serialize_set_value_packet(SetValuePacket_t *set_value_packet, uint8_t pack
 #endif // DEBUGGING
 }
 
-void serialize_data_packet(DataPacket_t *data_packet, uint8_t packet_length, uint8_t item_count) {
-	uint8_t *frame_payload = (uint8_t *)malloc(packet_length);
+void serialize_data_packet(DataPacket_t *data_packet, uint8_t *frame_payload, uint8_t packet_length, uint8_t item_count) {
 	memcpy(frame_payload, data_packet, 3);
 	memcpy(&frame_payload[3], data_packet->items, item_count);
 	memcpy(&frame_payload[3 + item_count], data_packet->values, packet_length - item_count - 3);

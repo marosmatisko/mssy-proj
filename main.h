@@ -61,9 +61,9 @@
 	#define LED3SW (xbi(PORTE,LED3))
 #endif
 
-#define DEVICE_LIMIT 4
+//#define DEVICE_LIMIT 4
 uint8_t connected_devices = 0;
-Device devices[DEVICE_LIMIT];
+Device devices[4];
 void *packet_buffer;
 PacketType last_packet_type;
 
