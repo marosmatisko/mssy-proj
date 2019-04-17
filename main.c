@@ -101,7 +101,7 @@ static void appSendData(void) {
 
 /*************************************************************************//**
 *****************************************************************************/
-void printDevices() {
+void APP_printDevices() {
 	APP_WriteString("\r\n| DEVICE | ADDRESS | STATE |\r\n");
 	for (uint8_t i = 0; i < connected_devices; ++i) {
 		APP_WriteString("|   ");
@@ -119,6 +119,32 @@ void printDevices() {
 
 /*************************************************************************//**
 *****************************************************************************/
+void APP_sendHello() { // dev&testing only
+	Device new_device;
+	new_device.address = 1;
+	new_device.state = Disconnected;
+	new_device.last_packet = AckPacket;
+	devices[connected_devices++] = new_device;
+	
+	HelloPacket_t *packet = (HelloPacket_t *)malloc(sizeof(HelloPacket_t));
+	packet->data_part.command_id = 128;
+	packet->data_part.data = 32;
+	packet->data_part.device_type = 128;
+	packet->data_part.items = (uint8_t *)malloc(1);
+	packet->data_part.items[0] = 1;
+	packet->read_write = 0;
+	packet->sleep = 0;
+	
+	uint8_t *frame_payload = (uint8_t *)malloc(8);
+	serialize_hello_packet(packet, frame_payload, 8);
+	prepareSendData(0, 1, frame_payload, 8);
+	appSendData();
+	
+	APP_WriteString("\r\nHello packet sent!\r\n");
+}
+
+/*************************************************************************//**
+*****************************************************************************/
 void HAL_UartBytesReceived(uint16_t bytes) { //citanie konzoly z klavesnice
 	for (uint16_t i = 0; i < bytes; i++) {
 		uint8_t byte = HAL_UartReadByte();
@@ -127,30 +153,10 @@ void HAL_UartBytesReceived(uint16_t bytes) { //citanie konzoly z klavesnice
 		if (byte == '\r') {
 			appUartBuffer[appUartTempbufferPtr++] = '\0';
 			if (strcmp("devices", (const char *)appUartBuffer) == 0) {
-				printDevices(); 
+				APP_printDevices(); 
 			} else {
 				if (strcmp("hello", (const char *)appUartBuffer) == 0) { //simulating NODE
-					Device new_device;
-					new_device.address = 1;
-					new_device.state = Disconnected;
-					new_device.last_packet = AckPacket;
-					devices[connected_devices++] = new_device;
-					
-					HelloPacket_t *packet = (HelloPacket_t *)malloc(sizeof(HelloPacket_t));
-					packet->data_part.command_id = 128;
-					packet->data_part.data = 32;
-					packet->data_part.device_type = 128;
-					packet->data_part.items = (uint8_t *)malloc(1);
-					packet->data_part.items[0] = 1;
-					packet->read_write = 0;
-					packet->sleep = 0;
-					
-					uint8_t *frame_payload = (uint8_t *)malloc(8);
-					serialize_hello_packet(packet, frame_payload, 8);					
-					prepareSendData(0, 1, frame_payload, 8);
-					appSendData();
-					
-					APP_WriteString("\r\nHello packet sent!\r\n");
+					APP_sendHello(); // dev&testing only
 				}
 				
 				if (appUartBuffer[0] == 'g' && appUartBuffer[1] == 'e' && appUartBuffer[2] == 't') {
@@ -183,8 +189,9 @@ static void appTimerHandler(SYS_Timer_t *timer) {
 }
 
 static void createSendHelloAck(NWK_DataInd_t *ind, uint16_t sleep_time, uint8_t command_id) {
-	HAL_UartWriteByte(command_id + '0');
+	HAL_UartWriteByte(command_id + '0'); //dev&testing only
 	APP_WriteString("\r\n");
+	
 	HelloAckPacket_t *packet = (HelloAckPacket_t *)malloc(sizeof(HelloAckPacket_t));
 	packet->address = ind->srcAddr;
 	packet->command_id = command_id;
@@ -196,18 +203,23 @@ static void createSendHelloAck(NWK_DataInd_t *ind, uint16_t sleep_time, uint8_t 
 	appSendData();
 }
 
+static void createSendAck(NWK_DataInd_t *ind) {
+	prepareSendData(ind->srcAddr, ind->srcEndpoint, ind->data, ind->size); // check size value!!
+	appSendData();
+}
+
 /*************************************************************************//**
 *****************************************************************************/
 static bool appDataInd(NWK_DataInd_t *ind) { //prijem
 	uint8_t new_device = 0;
 	if (ind->dstEndpoint == 1 && ind->data[0] == 128) {
-		for (int i = 0; i < connected_devices; ++i) {
+		for (int i = 0; i < connected_devices; ++i) { // duplicate hello packet from node
 			if (devices[i].address == ind->srcAddr) {
 				devices[i].state = Disconnected;
 				new_device = 1;
 			}
 		}
-		if (new_device == 0) {
+		if (new_device == 0) { // first hello packet from node
 			Device new_device;
 			new_device.address = ind->srcAddr;
 			new_device.state = Disconnected;
@@ -225,9 +237,33 @@ static bool appDataInd(NWK_DataInd_t *ind) { //prijem
 			APP_WriteString("\r\n");
 			//_delay_us(50);
 			switch (last_packet_type) {
-				case HelloPacket: { createSendHelloAck(ind, 1000, 2); APP_WriteString("Hello ACK sent! \r\n"); break; }
-				case HelloAckPacket: { createSendHelloAck(ind, 1000, 1); APP_WriteString("ACK to Hello ACK sent! \r\n"); break; }
-				case AckPacket: { APP_WriteString("ACK to Hello ACK received! \r\n"); devices[i].state = Connected; break; }
+				case HelloPacket: { 
+					createSendHelloAck(ind, 1000, 2); 
+					APP_WriteString("Hello ACK sent! \r\n"); 
+					break;
+				}
+				case HelloAckPacket: { // dev&testing only
+					 createSendHelloAck(ind, 1000, 1); 
+					 APP_WriteString("ACK to Hello ACK sent! \r\n"); 
+					 break; 
+				} 
+				case AckPacket: { 
+					APP_WriteString("ACK to Hello ACK received! \r\n");
+					devices[i].state = Connected; 
+					break; 
+				}
+				case SleepPacket: { 
+					createSendAck(ind); 
+					APP_WriteString("Sleep packet received!\r\n"); 
+					devices[i].state = InSleep; 
+					break; 
+				} 
+				case ReconnectPacket: { 
+					createSendAck(ind); 
+					APP_WriteString("Sleep packet received!\r\n"); 
+					devices[i].state = InSleep; 
+					break; 
+				} 
 			}
 		}
 	}
@@ -288,6 +324,38 @@ void APP_WriteString(char *string) {
 	while (string[index] != '\0') {
 		HAL_UartWriteByte(string[index]);
 		++index;
+	}
+}
+
+/*************************************************************************//**
+*****************************************************************************/
+uint8_t hex_char_to_value(uint8_t hex_char) {
+	uint8_t result = -1;
+	if (hex_char >= '0' && hex_char <= '9')
+		result = hex_char - '0';
+	else if (hex_char >= 'a' && hex_char <= 'f')
+		result = hex_char - 'a' + 10;
+	else if (hex_char >= 'A' && hex_char <= 'F')
+		result = hex_char - 'A' + 10;
+	return result;
+}
+
+void APP_hex_to_byte(uint8_t hex[], uint8_t byte[], uint8_t byte_length) {
+	for (uint8_t i = 0; i < byte_length; ++i) {
+		byte[i] = (hex_char_to_value(hex[2 * i]) << 4) + hex_char_to_value(hex[2 * i + 1]);
+	}
+}
+
+/*************************************************************************//**
+*****************************************************************************/
+uint8_t char_value_to_hex_value(uint8_t char_value) {
+	return (char_value < 10) ? char_value + '0' : char_value + 'a' - 10;
+}
+
+void APP_byte_to_hex(uint8_t byte[], uint8_t hex[], uint8_t hex_length) {
+	for (uint8_t i = 0; i < hex_length; i+=2) {
+		hex[i] = char_value_to_hex_value(byte[i / 2] >> 4);
+		hex[i+1] = char_value_to_hex_value(byte[i / 2] & 0xf);
 	}
 }
 

@@ -75,7 +75,7 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 	{
 		case HelloPacket: {
 			packet_struct = (HelloPacket_t *)malloc(sizeof(HelloPacket_t));
-			HelloPacket_t *packet = &packet_struct;
+			HelloPacket_t *packet = (HelloPacket_t *)&packet_struct;
 			packet->data_part.items = (uint8_t *)malloc((packet_length - 7));
 			memcpy(packet, frame, 4);
 			memcpy(&packet->sleep, &frame[5], 3);
@@ -102,7 +102,7 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 
 		case HelloAckPacket: {
 			packet_struct = (HelloAckPacket_t *) malloc(sizeof(HelloAckPacket_t));
-			HelloAckPacket_t *packet = &packet_struct;
+			HelloAckPacket_t *packet = (HelloAckPacket_t *)&packet_struct;
 			memcpy(packet, frame, packet_length);
 #ifdef DEBUGGING			
 			APP_WriteString("Hello ACK packet - COMMAND: ");
@@ -130,7 +130,7 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 			{
 				case 7: {
 					packet_struct = (HelloAckPacket_t *) malloc(sizeof(HelloAckPacket_t));
-					HelloAckPacket_t *packet = &packet_struct;
+					HelloAckPacket_t *packet = (HelloAckPacket_t *)&packet_struct;
 					memcpy(packet, frame, packet_length);				
 #ifdef DEBUGGING
 					printf("Hello ACK Packet - COMMAND: %d, ADDRESS: %d, SLEEP_PERIOD: %d, RESERVED: %d\r\n", packet->command_id,
@@ -157,7 +157,7 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 				}
 				case 5: {
 					packet_struct = (SleepPacket_t *) malloc(sizeof(SleepPacket_t));
-					SleepPacket_t *packet = &packet_struct;
+					SleepPacket_t *packet = (SleepPacket_t *)&packet_struct;
 					memcpy(packet, frame, packet_length);
 #ifdef DEBUGGING
 					APP_WriteString("Sleep packet - COMMAND: ");
@@ -177,7 +177,7 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 				}
 				default: {
 					packet_struct = (ReconnectAckPacket_t *) malloc(sizeof(ReconnectAckPacket_t));
-					ReconnectAckPacket_t *packet = &packet_struct;
+					ReconnectAckPacket_t *packet = (ReconnectAckPacket_t *)&packet_struct;
 					memcpy(packet, frame, packet_length);
 #ifdef DEBUGGING
 					APP_WriteString("Reconnect packet - COMMAND: ");
@@ -199,7 +199,7 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 
 		case SleepPacket: {
 			packet_struct = (SleepPacket_t *) malloc(sizeof(SleepPacket_t));
-			SleepPacket_t *packet = &packet_struct;
+			SleepPacket_t *packet = (SleepPacket_t *)&packet_struct;
 			memcpy(packet, frame, packet_length);
 #ifdef DEBUGGING
 			APP_WriteString("Sleep packet - COMMAND: ");
@@ -220,7 +220,7 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 
 		case ReconnectPacket: {
 			packet_struct = (ReconnectAckPacket_t *) malloc(sizeof(ReconnectAckPacket_t));
-			ReconnectAckPacket_t *packet = &packet_struct;
+			ReconnectAckPacket_t *packet = (ReconnectAckPacket_t *)&packet_struct;
 			memcpy(packet, frame, packet_length);
 #ifdef DEBUGGING
 			APP_WriteString("Reconnect packet - COMMAND: ");
@@ -239,7 +239,7 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 
 		case DataPacket: {
 			packet_struct = (DataPacket_t *) malloc(sizeof(DataPacket_t));
-			DataPacket_t *packet = &packet_struct;
+			DataPacket_t *packet = (DataPacket_t *)&packet_struct;
 			memcpy(&packet->device_type, &frame[0], 3);
 			
 			uint8_t item_count = 0;
@@ -295,7 +295,7 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 
 		case GetValuePacket: {
 			packet_struct = (GetValuePacket_t *) malloc(sizeof(GetValuePacket_t));
-			GetValuePacket_t *packet = &packet_struct;
+			GetValuePacket_t *packet = (GetValuePacket_t *)&packet_struct;
 			packet->items = (uint8_t *) malloc((packet_length - 4));
 			memcpy(packet, frame, 4);
 			memcpy(packet->items, &frame[4], packet_length - 4);
@@ -325,7 +325,7 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 
 		case SetValuePacket: {
 			packet_struct = (SetValuePacket_t *) malloc(sizeof(SetValuePacket_t));
-			SetValuePacket_t *packet = &packet_struct;
+			SetValuePacket_t *packet = (SetValuePacket_t *)&packet_struct;
 			packet->command_id = frame[0];
 			memcpy(&packet->data_part.device_type, &frame[1], 3);
 			
