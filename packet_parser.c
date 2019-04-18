@@ -17,7 +17,7 @@
 #include "packets.h"
 #include "halUart.h"
 
-#define DEBUGGING
+//#define DEBUGGING
 
 PacketType get_packet_type(Device device, uint8_t endpoint, uint8_t * frame, uint8_t packet_length) {
 	switch (endpoint) {
@@ -394,6 +394,21 @@ void detect_data_packet_arrays_size(uint16_t data, uint8_t *item_count) {
 		if (data >= temp) {
 			++(*item_count);
 			data -= temp;
+		}
+	}
+}
+
+void get_values_bytesize(uint16_t data, uint8_t *count) {
+	uint16_t temp_data = data, temp_value;
+	for (uint8_t i = 15; i > 0; --i) {
+		temp_value = (1 << i);
+		if (temp_data >= temp_value) {
+			temp_data -= temp_value;
+			switch (i) {
+				case 1: case 2: case 3: case 15: {count += 4; break; }
+				case 4: case 5: case 6: case 13: {count += 1; break; }
+				case 7: case 14: {count += 2; break;}
+			}
 		}
 	}
 }

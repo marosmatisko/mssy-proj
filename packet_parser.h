@@ -31,4 +31,7 @@ void serialize_get_value_packet(GetValuePacket_t *get_value_packet, uint8_t *fra
 void serialize_set_value_packet(SetValuePacket_t *set_value_packet, uint8_t *frame_payload, uint8_t packet_length, uint8_t item_count);
 void serialize_data_packet(DataPacket_t *data_packet, uint8_t *frame_payload, uint8_t packet_length, uint8_t item_count);
 
+//universal
+void detect_data_packet_arrays_size(uint16_t data, uint8_t *item_count);
+void get_values_bytesize(uint16_t data, uint8_t *count);
 #endif /* PACKET_PARSER_H_ */
