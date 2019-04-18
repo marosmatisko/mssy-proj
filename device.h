@@ -14,6 +14,7 @@ typedef struct Device {
 } Device;
 
 typedef struct DeviceProperties {
+	uint16_t deviceType;
 	uint16_t data;
 	uint8_t *items;
 	uint8_t *values;	

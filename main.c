@@ -148,6 +148,20 @@ void APP_sendHello() { // dev&testing only
 
 /*************************************************************************//**
 *****************************************************************************/
+void APP_sendGetAll(uint8_t index) {
+	GetValuePacket_t getValuePacket = {128, nodes[index].props.deviceType,
+	nodes[index].props.data, nodes[index].props.items};
+	uint8_t packet_size;
+	detect_data_packet_arrays_size(nodes[index].props.data, &packet_size);
+	packet_size += 4; // fixed part size
+	uint8_t *frame_payload = (uint8_t *)malloc(packet_size);
+	serialize_get_value_packet(&getValuePacket, frame_payload, packet_size);
+	prepareSendData(nodes[index].device.address, 2, frame_payload, packet_size);
+	appSendData();
+}
+
+/*************************************************************************//**
+*****************************************************************************/
 void HAL_UartBytesReceived(uint16_t bytes) { //citanie konzoly z klavesnice
 	for (uint16_t i = 0; i < bytes; i++) {
 		uint8_t byte = HAL_UartReadByte();
@@ -163,6 +177,10 @@ void HAL_UartBytesReceived(uint16_t bytes) { //citanie konzoly z klavesnice
 				}
 				
 				if (appUartBuffer[0] == 'g' && appUartBuffer[1] == 'e' && appUartBuffer[2] == 't') {
+					if (appUartBuffer[4] >= '0' && appUartBuffer[4] < '4') {
+						uint8_t index = appUartBuffer[4] - '0';
+						APP_sendGetAll(index);
+					}
 				}
 				if (appUartBuffer[0] == 's' && appUartBuffer[1] == 'e' && appUartBuffer[2] == 't') {
 				}			
@@ -263,7 +281,7 @@ static bool appDataInd(NWK_DataInd_t *ind) { //prijem
 			detect_data_packet_arrays_size(hello_packet->data_part.data, &values_count);
 			get_values_bytesize(hello_packet->data_part.data, &items_count); 
 			
-			DeviceProperties props = {hello_packet->data_part.data, (uint8_t *)malloc(values_count), (uint8_t *)malloc(items_count), 
+			DeviceProperties props = {hello_packet->data_part.device_type, hello_packet->data_part.data, (uint8_t *)malloc(values_count), (uint8_t *)malloc(items_count), 
 				hello_packet->sleep, hello_packet->read_write};
 			Node new_node = {new_device, props};
 			nodes[connected_nodes++] = new_node;
