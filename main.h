@@ -62,8 +62,8 @@
 #endif
 
 //#define DEVICE_LIMIT 4
-uint8_t connected_devices = 0;
-Device devices[4];
+uint8_t connected_nodes = 0;
+Node nodes[4];
 void *packet_buffer;
 PacketType last_packet_type;
 
