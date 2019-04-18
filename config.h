@@ -54,7 +54,7 @@
 
 // Address must be set to 0 for the first device, and to 1 for the second one.
 #define APP_ADDR                  0x00
-#define APP_PANID                 0x80
+#define APP_PANID                 0x88
 #define NETWORK_ENDPOINT              1
 #define GET_SET_ENDPOINT              2
 #define PERIODIC_ENDPOINT             3

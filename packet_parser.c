@@ -17,7 +17,7 @@
 #include "packets.h"
 #include "halUart.h"
 
-#define DEBUGGING
+//#define DEBUGGING
 
 PacketType get_packet_type(Device device, uint8_t endpoint, uint8_t * frame, uint8_t packet_length) {
 	switch (endpoint) {
