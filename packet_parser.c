@@ -19,19 +19,20 @@
 
 //#define DEBUGGING
 
-PacketType get_packet_type(Device device, uint8_t endpoint, uint8_t * frame, uint8_t packet_length) {
-	switch (endpoint) {
+PacketType get_packet_type(Device *device, NWK_DataInd_t *nwk_packet) {
+	uint8_t first_byte = nwk_packet->data[0];
+	switch (nwk_packet->dstEndpoint) {
 		case 1: {
-			if (device.state == Disconnected && frame[0] == 128) {  // node -> gateway
+			if (device->state == Disconnected && first_byte == 128) {  // node -> gateway
 				return HelloPacket;
 			} 
-			else if(device.state == Disconnected && frame[0] == 2) { // gateway -> node
+			else if(device->state == Disconnected && first_byte == 2) { // gateway -> node
 				return HelloAckPacket;
 			}
-			else if (device.state == Connected && frame[0] == 64) {  // node -> gateway
+			else if (device->state == Connected && first_byte == 64) {  // node -> gateway
 				return SleepPacket;
 			}
-			else if (device.state == InSleep && frame[0] == 32) {  // node -> gateway
+			else if (device->state == InSleep && first_byte == 32) {  // node -> gateway
 				return ReconnectPacket;
 			} 
 			else {
@@ -40,11 +41,11 @@ PacketType get_packet_type(Device device, uint8_t endpoint, uint8_t * frame, uin
 		} break;
 		
 		case 2: {
-			if (device.state == Connected && frame[0] == 128) {  // gateway -> node
+			if (device->state == Connected && first_byte == 128) {  // gateway -> node
 				return SetValuePacket;
-			} else if (device.state == Connected && frame[0] == 64) {  // gateway -> node
+			} else if (device->state == Connected && first_byte == 64) {  // gateway -> node
 				return GetValuePacket;
-			} else if (frame[0] == 1) { // both
+			} else if (first_byte == 1) { // both
 				return AckPacket;
 			} else {   // node -> gateway
 				return DataPacket;
@@ -52,7 +53,7 @@ PacketType get_packet_type(Device device, uint8_t endpoint, uint8_t * frame, uin
 		} break;
 		
 		case 3: {
-			if (packet_length >= 6 && frame[0] == 2) {  // node -> gateway
+			if (nwk_packet->size >= 6 && first_byte == 2) {  // node -> gateway
 				return DataPacket;
 			}
 			else { //if (frame[0] == 1) { // both
@@ -69,17 +70,17 @@ PacketType get_packet_type(Device device, uint8_t endpoint, uint8_t * frame, uin
 	}
 }
 
-PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8_t packet_length, void *packet_struct) {
-	PacketType detected_packet = get_packet_type(device, endpoint, frame, packet_length);
+PacketType process_packet(Device *device, NWK_DataInd_t *nwk_packet, void *packet_struct) {
+	PacketType detected_packet = get_packet_type(device, nwk_packet);
 	switch (detected_packet)
 	{
 		case HelloPacket: {
 			packet_struct = (HelloPacket_t *)malloc(sizeof(HelloPacket_t));
-			HelloPacket_t *packet = (HelloPacket_t *)&packet_struct;
-			packet->data_part.items = (uint8_t *)malloc((packet_length - 7));
-			memcpy(packet, frame, 4);
-			memcpy(&packet->sleep, &frame[5], 3);
-			memcpy(packet->data_part.items, &frame[4], packet_length - 7);		
+			HelloPacket_t *packet = (HelloPacket_t *)packet_struct;
+			packet->data_part.items = (uint8_t *)malloc((nwk_packet->size - 7));
+			memcpy(packet, nwk_packet->data, 4);
+			memcpy(&packet->sleep, &nwk_packet->data[5], 3);
+			memcpy(packet->data_part.items, &nwk_packet->data[4], nwk_packet->size - 7);		
 #ifdef DEBUGGING
 			APP_WriteString("Hello packet - COMMAND: ");
 			HAL_UartWriteByte(packet->data_part.command_id - 64);
@@ -102,8 +103,8 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 
 		case HelloAckPacket: {
 			packet_struct = (HelloAckPacket_t *) malloc(sizeof(HelloAckPacket_t));
-			HelloAckPacket_t *packet = (HelloAckPacket_t *)&packet_struct;
-			memcpy(packet, frame, packet_length);
+			HelloAckPacket_t *packet = (HelloAckPacket_t *)packet_struct;
+			memcpy(packet, nwk_packet->data, nwk_packet->size);
 #ifdef DEBUGGING			
 			APP_WriteString("Hello ACK packet - COMMAND: ");
 			HAL_UartWriteByte(packet->command_id + 50);
@@ -126,12 +127,12 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 		}
 
 		case AckPacket: {
-			switch (packet_length)
+			switch (nwk_packet->size)
 			{
 				case 7: {
 					packet_struct = (HelloAckPacket_t *) malloc(sizeof(HelloAckPacket_t));
-					HelloAckPacket_t *packet = (HelloAckPacket_t *)&packet_struct;
-					memcpy(packet, frame, packet_length);				
+					HelloAckPacket_t *packet = (HelloAckPacket_t *)packet_struct;
+					memcpy(packet, nwk_packet->data, nwk_packet->size);				
 #ifdef DEBUGGING
 					printf("Hello ACK Packet - COMMAND: %d, ADDRESS: %d, SLEEP_PERIOD: %d, RESERVED: %d\r\n", packet->command_id,
 					packet->address, packet->sleep_period, packet->reserved);
@@ -157,8 +158,8 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 				}
 				case 5: {
 					packet_struct = (SleepPacket_t *) malloc(sizeof(SleepPacket_t));
-					SleepPacket_t *packet = (SleepPacket_t *)&packet_struct;
-					memcpy(packet, frame, packet_length);
+					SleepPacket_t *packet = (SleepPacket_t *)packet_struct;
+					memcpy(packet, nwk_packet->data, nwk_packet->size);
 #ifdef DEBUGGING
 					APP_WriteString("Sleep packet - COMMAND: ");
 					HAL_UartWriteByte(packet->command_id);
@@ -177,8 +178,8 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 				}
 				default: {
 					packet_struct = (ReconnectAckPacket_t *) malloc(sizeof(ReconnectAckPacket_t));
-					ReconnectAckPacket_t *packet = (ReconnectAckPacket_t *)&packet_struct;
-					memcpy(packet, frame, packet_length);
+					ReconnectAckPacket_t *packet = (ReconnectAckPacket_t *)packet_struct;
+					memcpy(packet, nwk_packet->data, nwk_packet->size);
 #ifdef DEBUGGING
 					APP_WriteString("Reconnect packet - COMMAND: ");
 					HAL_UartWriteByte(packet->command_id);
@@ -199,8 +200,8 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 
 		case SleepPacket: {
 			packet_struct = (SleepPacket_t *) malloc(sizeof(SleepPacket_t));
-			SleepPacket_t *packet = (SleepPacket_t *)&packet_struct;
-			memcpy(packet, frame, packet_length);
+			SleepPacket_t *packet = (SleepPacket_t *)packet_struct;
+			memcpy(packet, nwk_packet->data, nwk_packet->size);
 #ifdef DEBUGGING
 			APP_WriteString("Sleep packet - COMMAND: ");
 			HAL_UartWriteByte(packet->command_id);
@@ -220,8 +221,8 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 
 		case ReconnectPacket: {
 			packet_struct = (ReconnectAckPacket_t *) malloc(sizeof(ReconnectAckPacket_t));
-			ReconnectAckPacket_t *packet = (ReconnectAckPacket_t *)&packet_struct;
-			memcpy(packet, frame, packet_length);
+			ReconnectAckPacket_t *packet = (ReconnectAckPacket_t *)packet_struct;
+			memcpy(packet, nwk_packet->data, nwk_packet->size);
 #ifdef DEBUGGING
 			APP_WriteString("Reconnect packet - COMMAND: ");
 			HAL_UartWriteByte(packet->command_id);
@@ -239,17 +240,17 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 
 		case DataPacket: {
 			packet_struct = (DataPacket_t *) malloc(sizeof(DataPacket_t));
-			DataPacket_t *packet = (DataPacket_t *)&packet_struct;
-			memcpy(&packet->device_type, &frame[0], 3);
+			DataPacket_t *packet = (DataPacket_t *)packet_struct;
+			memcpy(&packet->device_type, nwk_packet->data, 3);
 			
 			uint8_t item_count = 0;
 			detect_data_packet_arrays_size(packet->data, &item_count);
-			uint8_t data_bytes = packet_length - item_count - 3;
+			uint8_t data_bytes = nwk_packet->size - item_count - 3;
 			
 			packet->items = (uint8_t *) malloc(item_count);
 			packet->values = (uint8_t *) malloc(data_bytes);
-			memcpy(packet->items, &frame[3], item_count);
-			memcpy(packet->values, &frame[3 + item_count], data_bytes);
+			memcpy(packet->items, &nwk_packet->data[3], item_count);
+			memcpy(packet->values, &nwk_packet->data[3 + item_count], data_bytes);
 
 #ifdef DEBUGGING
 			APP_WriteString("Set value packet - DEVICE_TYPE: ");
@@ -295,10 +296,10 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 
 		case GetValuePacket: {
 			packet_struct = (GetValuePacket_t *) malloc(sizeof(GetValuePacket_t));
-			GetValuePacket_t *packet = (GetValuePacket_t *)&packet_struct;
-			packet->items = (uint8_t *) malloc((packet_length - 4));
-			memcpy(packet, frame, 4);
-			memcpy(packet->items, &frame[4], packet_length - 4);
+			GetValuePacket_t *packet = (GetValuePacket_t *)packet_struct;
+			packet->items = (uint8_t *) malloc((nwk_packet->size - 4));
+			memcpy(packet, nwk_packet->data, 4);
+			memcpy(packet->items, &nwk_packet->data[4], nwk_packet->size - 4);
 			
 #ifdef DEBUGGING
 			APP_WriteString("Set value packet - COMMAND: ");
@@ -325,18 +326,18 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 
 		case SetValuePacket: {
 			packet_struct = (SetValuePacket_t *) malloc(sizeof(SetValuePacket_t));
-			SetValuePacket_t *packet = (SetValuePacket_t *)&packet_struct;
-			packet->command_id = frame[0];
-			memcpy(&packet->data_part.device_type, &frame[1], 3);
+			SetValuePacket_t *packet = (SetValuePacket_t *)packet_struct;
+			packet->command_id = nwk_packet->data[0];
+			memcpy(&packet->data_part.device_type, &nwk_packet->data[1], 3);
 			
 			uint8_t item_count = 0;
 			detect_data_packet_arrays_size(packet->data_part.data, &item_count);
-			uint8_t data_bytes = packet_length - item_count - 4;
+			uint8_t data_bytes = nwk_packet->size - item_count - 4;
 
 			packet->data_part.items = (uint8_t *) malloc(item_count);
 			packet->data_part.values = (uint8_t *) malloc(data_bytes);
-			memcpy(packet->data_part.items, &frame[4], item_count);
-			memcpy(packet->data_part.values, &frame[4 + item_count], data_bytes);
+			memcpy(packet->data_part.items, &nwk_packet->data[4], item_count);
+			memcpy(packet->data_part.values, &nwk_packet->data[4 + item_count], data_bytes);
 			
 #ifdef DEBUGGING
 			APP_WriteString("Set value packet - COMMAND: ");
@@ -389,7 +390,7 @@ PacketType process_packet(Device device, uint8_t endpoint, uint8_t* frame, uint8
 
 void detect_data_packet_arrays_size(uint16_t data, uint8_t *item_count) {
 	uint16_t temp;
-	for (uint8_t i = 15; i > 0; --i) {
+	for (int i = 15; i >= 0; i--) {
 		temp = (1 << i);
 		if (data >= temp) {
 			++(*item_count);
@@ -400,16 +401,17 @@ void detect_data_packet_arrays_size(uint16_t data, uint8_t *item_count) {
 
 void get_values_bytesize(uint16_t data, uint8_t *count) {
 	uint16_t temp_data = data, temp_value;
-	for (uint8_t i = 15; i > 0; --i) {
+	for (int i = 15; i >= 0; i--) {
 		temp_value = (1 << i);
 		if (temp_data >= temp_value) {
 			temp_data -= temp_value;
 			switch (i) {
-				case 1: case 2: case 3: case 15: {count += 4; break; }
-				case 4: case 5: case 6: case 13: {count += 1; break; }
-				case 7: case 14: {count += 2; break;}
+				case 1: case 2: case 3: case 15: {*(count) += 4; break; }
+				case 4: case 5: case 6: case 13: {*(count) += 1; break; }
+				case 7: case 14: {*(count) += 2; break;}
 			}
 		}
+		if (temp_data == 0) break;
 	}
 }
 
