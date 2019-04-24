@@ -11,13 +11,14 @@
 
 #include "packets.h"
 #include "device.h"
+#include "nwk.h"
 
 // from main.h
 extern void APP_WriteString(char *string);
 
 //incoming
-PacketType get_packet_type(Device device, uint8_t endpoint, uint8_t *frame, uint8_t packet_length);
-PacketType process_packet(Device device, uint8_t endpoint, uint8_t *frame, uint8_t packet_length, void *packet_struct);
+PacketType get_packet_type(Device *device, NWK_DataInd_t *nwk_packet);
+PacketType process_packet(Device *device, NWK_DataInd_t *nwk_packet, void *packet_struct);
 void detect_data_packet_arrays_size(uint16_t data, uint8_t *item_count);
 
 //outgoing
