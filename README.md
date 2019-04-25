@@ -112,6 +112,7 @@ static void createSendAck(NWK_DataInd_t *ind) {
 | packets.h | Definition of packet structures. |
 
 ## How to use (sample communication)
+For this example gateway uses address 0x00 and keyboard uses 0x01. Code from *gateway* branch can be ran on both devices, only address needs to be changed.
 Devices use *HelloPacket* to connect to gateway. This packet needs to be the first one sent to gateway, otherwise gateway ignores any other packets received from unknown devices.
 
 Example communication (Hello):
