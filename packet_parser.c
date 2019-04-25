@@ -53,7 +53,7 @@ PacketType get_packet_type(Device *device, NWK_DataInd_t *nwk_packet) {
 		} break;
 		
 		case 3: {
-			if (nwk_packet->size >= 6 && first_byte == 2) {  // node -> gateway
+			if (nwk_packet->size >= 6) {  // node -> gateway
 				return DataPacket;
 			}
 			else { //if (frame[0] == 1) { // both
@@ -390,6 +390,7 @@ PacketType process_packet(Device *device, NWK_DataInd_t *nwk_packet, void *packe
 
 void detect_data_packet_arrays_size(uint16_t data, uint8_t *item_count) {
 	uint16_t temp;
+	*item_count = 0;
 	for (int i = 15; i >= 0; i--) {
 		temp = (1 << i);
 		if (data >= temp) {
@@ -401,6 +402,7 @@ void detect_data_packet_arrays_size(uint16_t data, uint8_t *item_count) {
 
 void get_values_bytesize(uint16_t data, uint8_t *count) {
 	uint16_t temp_data = data, temp_value;
+	*count = 0;
 	for (int i = 15; i >= 0; i--) {
 		temp_value = (1 << i);
 		if (temp_data >= temp_value) {
