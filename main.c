@@ -81,10 +81,6 @@ static void prepareSendData(uint8_t destAddr, uint8_t endpoint, uint8_t* data, u
 	appDataReq.data = appDataReqBuffer;
 	appDataReq.size = appUartBufferPtr = length;
 	appDataReq.confirm = appDataConf;
-	
-	//SYS_TimerStop(&appTimer);
-	//SYS_TimerStart(&appTimer);
-	//_delay_us(100);
 }
 
 /*************************************************************************//**
@@ -172,6 +168,27 @@ void APP_printNodeInfo() {
 	APP_WriteString("\r\n");
 }
 
+/*************************************************************************//**
+*****************************************************************************/
+void APP_sendDebugData() {
+	DataPacket_t dataPacket;
+	dataPacket.device_type = 104;
+	dataPacket.data = 54;
+	dataPacket.items = (uint8_t*)malloc(4);
+	dataPacket.values = (uint8_t*)malloc(10);
+	for(int i = 0; i < 4; i++)
+		dataPacket.items[i] = 1;
+	for(int i = 0; i < 10; i++)
+		dataPacket.values[i] = (i < 3 || i == 6) ? 1 : 255;
+	uint8_t *frame_payload = (uint8_t *)malloc(17);
+	serialize_data_packet(&dataPacket, frame_payload, 17, 4);
+	prepareSendData(0x00, 3, frame_payload, 17);
+	appSendData();
+	
+	APP_WriteString("\r\n[DEBUG] Debug data sent!\r\n");
+}
+/*************************************************************************//**
+*****************************************************************************/
 void clearBuffer(){
 	appUartBuffer[0] = 0;
 	appUartTempbufferPtr = 0;
@@ -195,8 +212,13 @@ void HAL_UartBytesReceived(uint16_t bytes) { //citanie konzoly z klavesnice
 				clearBuffer();
 				continue; 
 			}
-			if (strcmp("hello", (const char *)appUartBuffer) == 0) { //simulating NODE
+			if (strcmp("hello", (const char *)appUartBuffer) == 0) { //simulating KEYBOARD NODE
 				APP_sendHello(); // dev&testing only
+				clearBuffer();
+				continue;
+			}
+			if (strcmp("data", (const char *)appUartBuffer) == 0) {  //simulating KEYBOARD NODE
+				APP_sendDebugData();
 				clearBuffer();
 				continue;
 			}
@@ -209,6 +231,7 @@ void HAL_UartBytesReceived(uint16_t bytes) { //citanie konzoly z klavesnice
 				}
 			}
 			if (appUartBuffer[0] == 's' && appUartBuffer[1] == 'e' && appUartBuffer[2] == 't') {
+				APP_WriteString("Not implemented yet!\r\n");
 				continue;
 			}
 			clearBuffer();
@@ -216,13 +239,6 @@ void HAL_UartBytesReceived(uint16_t bytes) { //citanie konzoly z klavesnice
 			appUartBuffer[appUartTempbufferPtr++] = byte;
 		}
 		
-		/*
-		if (appUartBufferPtr == sizeof(appUartBuffer)) {
-		}
-
-		if (appUartBufferPtr < sizeof(appUartBuffer))
-			appUartBuffer[appUartBufferPtr++] = byte;
-		*/
 	}
 }
 
@@ -274,12 +290,14 @@ static void createSendDataAck(NWK_DataInd_t *ind, uint8_t new_data) {
 static void printData(DataPacket_t *dataPacket, uint8_t packetLength) {
 	uint8_t item_count;
 	detect_data_packet_arrays_size(dataPacket->data, &item_count);
-	uint8_t values_size = packetLength - item_count - 3;
+	uint8_t values_size = 2*(packetLength - item_count - 3);
 	uint8_t *hex_values = (uint8_t *)malloc(values_size);
 	APP_byte_to_hex(dataPacket->values, hex_values, values_size);
 	APP_WriteString("[DEBUG] Data packet:");
-	for (uint8_t i = 0; i < values_size; ++i ) {
+	for (uint8_t i = 0; i < values_size; i+=2 ) {
+		APP_WriteString("0x");
 		HAL_UartWriteByte(hex_values[i]);
+		HAL_UartWriteByte(hex_values[i+1]);
 		HAL_UartWriteByte(' ');
 	}
 	APP_WriteString("\r\n---End Of Data---\r\n");
@@ -298,7 +316,7 @@ static bool appDataInd(NWK_DataInd_t *ind) { //prijem
 			}
 		}
 		if (new_device_flag == 0) { // first hello packet from node
-			Device new_device; // = {ind->srcAddr, Disconnected};
+			Device new_device;
 			new_device.address = ind->srcAddr;
 			new_device.state = Disconnected;
 			
@@ -330,6 +348,12 @@ static bool appDataInd(NWK_DataInd_t *ind) { //prijem
 	for (int i = 0; i < connected_nodes; i++) {
 		if (nodes->device.address == ind->srcAddr) {
 			if (packet_buffer == NULL) {
+				packet_buffer = malloc(1);
+				//((DataPacket_t*)packet_buffer)->items = malloc(1); //compiler optimalisation workaround
+				//((DataPacket_t*)packet_buffer)->values = malloc(1);
+				//free(((DataPacket_t*)packet_buffer)->items);
+				//free(((DataPacket_t*)packet_buffer)->values);
+				free(packet_buffer);
 				last_packet_type = process_packet(&nodes[i].device, ind, packet_buffer);
 			}
 			APP_WriteString("[DEBUG] Received packet: ");
@@ -343,7 +367,7 @@ static bool appDataInd(NWK_DataInd_t *ind) { //prijem
 					break;
 				}
 				case HelloAckPacket: { // dev&testing only
-					 createSendHelloAck(ind, 1000, 1); 
+					 createSendHelloAck(ind, ((HelloAckPacket_t *)packet_buffer)->sleep_period, 1); 
 					 APP_WriteString("[DEBUG] ACK to Hello ACK sent! \r\n"); 
 					 nodes[i].device.state = Connected;
 					 break; 
@@ -386,10 +410,6 @@ static bool appDataInd(NWK_DataInd_t *ind) { //prijem
 		}
 	}
 	
-	//debug print
-	/*
-	for (uint8_t i = 0; i < ind->size; i++)
-		HAL_UartWriteByte(ind->data[i]);*/
 	return true;
 }
 
